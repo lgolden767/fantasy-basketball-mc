@@ -1,4 +1,5 @@
 #include "HttpClient.h"
+#include "EspnClient.h"
 
 #include <curl/curl.h>
 #include <iostream>
@@ -13,14 +14,13 @@ int main() {
     int exitCode = 0;
 
     try {
-        HttpClient client;
+        EspnClient espn;
 
-        std::string response = client.get(
-            "https://site.api.espn.com/apis/site/v2/"
-            "sports/basketball/nba/scoreboard"
-        );
+        auto names = espn.getGameNames();
 
-        std::cout << response << '\n';
+        for (const auto& name : names) {
+            std::cout << name << '\n';
+        }
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";
         exitCode = 1;
