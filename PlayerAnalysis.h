@@ -18,4 +18,4 @@ struct PlayerSummary {
 PlayerSummary calculatePlayerAverages(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId
-)
+);
