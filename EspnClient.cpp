@@ -27,11 +27,12 @@ std::vector<std::string> EspnClient::getGameNames()
     return names;
 }
 
-std::vector<Game> EspnClient::getGames()
+std::vector<Game> EspnClient::getGames(const std::string& date)
 {
     std::string response = http.get(
         "https://site.api.espn.com/apis/site/v2/"
-        "sports/basketball/nba/scoreboard");
+        "sports/basketball/nba/scoreboard?dates" + date
+    );
 
     auto data = nlohmann::json::parse(response);
 

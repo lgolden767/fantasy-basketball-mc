@@ -13,6 +13,6 @@ class EspnClient{
 
     public:
         std::vector<std::string> getGameNames();
-        std::vector<Game> getGames();
+        std::vector<Game> getGames(const std::string& date);
         std::vector<PlayerGameStats> getPlayerStats(const std::string& gameId);
 };
