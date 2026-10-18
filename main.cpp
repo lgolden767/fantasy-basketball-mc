@@ -24,13 +24,37 @@ int main() {
         }
 
         for (const auto& game : games) {
-            std::cout << game.awayTeam
-                      << " at "
-                      << game.homeTeam
-                      << " - "
-                      << game.status
-                      << '\n';
+            std::cout << game.id << " | "
+                      << game.awayTeam << " at "
+                      << game.homeTeam << " | "
+                      << game.status << '\n';
         }
+
+        std::string gameId;
+        std::cout << "\n Enter a completed game's ID: ";
+        std::cin >> gameId;
+
+        auto players = espn.getPlayerStats(gameId);
+
+        for (const auto& player : players) {
+            std::cout << player.playerName;
+
+            if (player.didNotPlay) {
+                std::cout << "DNP";
+            }
+            else {
+                std::cout << " | MIN: " << player.minutes
+                          << " | PTS: " << player.points
+                          << " | REB: " << player.rebounds
+                          << " | AST: " << player.assists
+                          << '\n';
+            }
+        }
+
+        if (players.empty()) {
+            std::cout << "No player statistics returned.\n";
+        }
+
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";
         exitCode = 1;
