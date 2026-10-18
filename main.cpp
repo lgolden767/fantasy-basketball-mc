@@ -5,6 +5,21 @@
 #include <curl/curl.h>
 #include <iostream>
 #include <exception>
+#include <fstream>
+
+std::string csvQuote(const std::string& text) {
+    std::string result = "\"";
+
+    for (char character : text) {
+        if (character == '"') {
+            result += '"';
+        }
+
+        result += character;
+    }
+
+    return result + '"';
+}
 
 int main() {
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
@@ -40,7 +55,7 @@ int main() {
             std::cout << player.playerName;
 
             if (player.didNotPlay) {
-                std::cout << "DNP";
+                std::cout << "DNP\n";
             }
             else {
                 std::cout << " | MIN: " << player.minutes
@@ -54,6 +69,42 @@ int main() {
         if (players.empty()) {
             std::cout << "No player statistics returned.\n";
         }
+
+        std::string filename = gameId + "_stats.csv";
+
+        std::ofstream file(filename);
+
+        if (!file) {
+            throw std::runtime_error("Could not open CSV file.");
+        }
+
+        file << "game_id,player_id,player_name,did_not_play,minutes,points,rebounds,assists\n";
+
+        for (const auto& player : players) {
+            file << csvQuote(player.gameId) << ","
+                 << csvQuote(player.playerId) << ","
+                 << csvQuote(player.playerName) << ","
+                 << csvQuote(player.didNotPlay ? "true" : "false") << ",";
+
+            if (player.didNotPlay) {
+                file << ",,,\n";
+            }
+            else {
+                file << csvQuote(player.minutes) << ","
+                     << player.points << ","
+                     << player.rebounds << ","
+                     << player.assists << "\n";
+            }
+            
+        }
+
+        file.close();
+
+        if (!file) {
+            throw std::runtime_error("Could not finish writing CSV.");
+        }
+
+        std::cout << "Saved " << filename << "\n";
 
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";
