@@ -8,3 +8,7 @@ void savePlayerStats(
     const std::vector<PlayerGameStats>& players,
     const std::string& filename
 );
+
+std::vector<PlayerGameStats> loadPlayerStats(
+    const std::string& filename
+);
