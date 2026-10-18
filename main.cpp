@@ -11,20 +11,6 @@
 #include <fstream>
 #include <iomanip>
 
-std::string csvQuote(const std::string& text) {
-    std::string result = "\"";
-
-    for (char character : text) {
-        if (character == '"') {
-            result += '"';
-        }
-
-        result += character;
-    }
-
-    return result + '"';
-}
-
 int main() {
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
         std::cerr << "Could not initialize curl.\n";
@@ -51,6 +37,8 @@ int main() {
             "401810830_stats.csv"
         };
 
+        std::vector<long long> weeklyTotals;
+
         for (const auto& filename : filenames) {
             auto records = loadPlayerStats(filename);
 
@@ -58,33 +46,31 @@ int main() {
         }
 
         std::string playerId;
+        int gamesPerWeek = 0;
         int threshold = 0;
 
         std::cout << "Enter player ID: ";
         std::cin >> playerId;
 
+        std::cout << "Enter games in a week: ";
+
+        if (!(std::cin >> gamesPerWeek)) {
+            throw std::invalid_argument("Please enter a whole number of games.");
+        }
+
         std::cout << "Enter points threshold: ";
 
         if (!(std::cin >> threshold)) {
-            throw std::runtime_error("Please enter whole number threshold.");
+            throw std::invalid_argument("Please enter whole number threshold.");
         }
 
-        auto result = simulatePoints(
+        auto result = simulateWeeklyPoints(
             allPlayers,
             playerId,
+            gamesPerWeek,
             threshold,
-            1000
+            10000
         );
-
-        std::cout << std::fixed << std::setprecision(2);
-
-        std::cout << "\nHistorical games: " 
-                  << result.historicalGames << '\n'
-                  << "Simulated games: "
-                  << result.simulations << '\n'
-                  << "Estimated probability of: "
-                  << threshold << "+ points: " 
-                  << result.probability * 100 << "%\n";
 
         auto summary = calculatePlayerAverages(allPlayers, playerId);
 
@@ -96,6 +82,27 @@ int main() {
                   << "Average points: " << summary.avgPoints << '\n'
                   << "Average rebounds: " << summary.avgRebounds << '\n'
                   << "Average assists: " << summary.avgAssists << '\n';
+
+        std::cout << "\nHistorical games: " 
+                  << result.historicalGames << '\n'
+                  << "Simulated weeks: "
+                  << result.simulations << '\n'
+                  << "Games per week: "
+                  << gamesPerWeek << '\n'
+                  << "Estimated probability of: "
+                  << threshold << "+ points: " 
+                  << result.probability * 100 << "%\n";
+
+        std::cout << "Mean weekly points: "
+                  << result.meanPoints << "\n"
+                  << "10th percentile: "
+                  << result.p10 << "\n"
+                  << "Median: "
+                  << result.median << '\n'
+                  << "90th percentile: "
+                  << result.p90 << '\n'
+                  << "Expected mean from history: "
+                  << gamesPerWeek * summary.avgPoints << '\n';
 
         if (summary.pointsStdDev.has_value()) {
             std::cout << "Points SD: " << summary.pointsStdDev.value() << '\n';
