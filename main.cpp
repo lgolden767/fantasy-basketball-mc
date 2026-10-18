@@ -33,50 +33,55 @@ int main() {
     try {
         EspnClient espn;
 
-        std::vector<Game> games = espn.getGames("20260314");
+        std::string date;
+
+        std::cout << "Enter date (YYYYMMDD): ";
+        std::cin >> date;
+
+        auto games = espn.getGames(date);
 
         if (games.empty()) {
             std::cout << "No games returned.\n";
         }
 
         for (const auto& game : games) {
+            if (!game.completed) {
+                continue;
+            }
+
             std::cout << game.id << " | "
-                      << game.awayTeam << " at "
-                      << game.homeTeam << " | "
-                      << game.status << '\n';
+                                 << game.awayTeam << " at "
+                                 << game.homeTeam << " | "
+                                 << game.status << '\n';
         }
 
-        std::string gameId;
-        std::cout << "\n Enter a completed game's ID: ";
-        std::cin >> gameId;
+        int savedCount = 0;
 
-        auto players = espn.getPlayerStats(gameId);
-
-        for (const auto& player : players) {
-            std::cout << player.playerName;
-
-            if (player.didNotPlay) {
-                std::cout << "| DNP\n";
+        for (const auto& game : games) {
+            if (!game.completed) {
+                continue;
             }
-            else {
-                std::cout << " | MIN: " << player.minutes
-                          << " | PTS: " << player.points
-                          << " | REB: " << player.rebounds
-                          << " | AST: " << player.assists
-                          << '\n';
+
+            try {
+                auto players = espn.getPlayerStats(game.id);
+
+                if (players.empty()) {
+                    std::cout << "No player stats for " << game.id << '\n';
+                    continue;
+                }
+
+                std::string filename = game.id + "_stats.csv";
+                savePlayerStats(players, filename);
+
+                std::cout << "Saved " << filename << '\n';
+                ++savedCount;
+            } catch (const std::exception& error) {
+                std::cerr << "Failed game " << game.id
+                        << ": " << error.what() << '\n';
             }
         }
 
-        if (players.empty()) {
-            std::cout << "No player statistics returned.\n";
-        }
-        
-        std::string filename = gameId + "_stats.csv";
-
-        savePlayerStats(players, filename);
-
-        std::cout << "Saved " + filename << "\n";
-
+        std::cout << "Exported " << savedCount << " games.\n";
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";
         exitCode = 1;
