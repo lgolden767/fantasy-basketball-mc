@@ -64,7 +64,9 @@ void savePlayerStats(
         throw std::runtime_error("Could not open CSV file.");
     }
 
-    file << "game_id,player_id,player_name,did_not_play,minutes,points,rebounds,assists\n";
+    file << "game_id,player_id,player_name,did_not_play,"
+        "minutes,points,rebounds,assists,steals,blocks,"
+        "turnovers,fgm,fga,ftm,fta,three_pm,three_pa\n";
 
     for (const auto& player : players) {
         file << csvQuote(player.gameId) << ","
@@ -73,13 +75,28 @@ void savePlayerStats(
                 << csvQuote(player.didNotPlay ? "true" : "false") << ",";
 
         if (player.didNotPlay) {
-            file << ",,,\n";
+            for (int column = 0; column < 13; ++column) {
+                if (column > 0) {
+                    file << ',';
+                }
+            }
+
+            file << '\n';
         }
         else {
-            file << csvQuote(player.minutes) << ","
-                    << player.points << ","
-                    << player.rebounds << ","
-                    << player.assists << "\n";
+            file << csvQuote(player.minutes) << ','
+                    << player.points << ','
+                    << player.rebounds << ','
+                    << player.assists << ','
+                    << player.steals << ','
+                    << player.blocks << ','
+                    << player.turnovers << ','
+                    << player.fieldGoalsMade << ','
+                    << player.fieldGoalsAttempted << ','
+                    << player.freeThrowsMade << ','
+                    << player.freeThrowsAttempted << ','
+                    << player.threePointersMade << ','
+                    << player.threePointersAttempted << '\n';
         }
         
     }
@@ -120,7 +137,16 @@ std::vector<PlayerGameStats> loadPlayerStats(
         "minutes",
         "points",
         "rebounds",
-        "assists"
+        "assists",
+        "steals",
+        "blocks",
+        "turnovers",
+        "fgm",
+        "fga",
+        "ftm",
+        "fta",
+        "three_pm",
+        "three_pa"
     };
 
     if (parseCsvRow(line) != expectedHeader) {
@@ -144,8 +170,8 @@ std::vector<PlayerGameStats> loadPlayerStats(
         try{
             auto fields = parseCsvRow(line);
 
-            if (fields.size() != 8) {
-                throw std::runtime_error("Expected 8 fields.");
+            if (fields.size() != 17) {
+                throw std::runtime_error("Expected 17 fields.");
             }
 
             PlayerGameStats player;
@@ -176,9 +202,18 @@ std::vector<PlayerGameStats> loadPlayerStats(
                     return value;
                 };
 
-                player.points   = ReadStat(fields.at(5));
-                player.rebounds = ReadStat(fields.at(6));
-                player.assists  = ReadStat(fields.at(7));
+                player.points                   = ReadStat(fields.at(5));
+                player.rebounds                 = ReadStat(fields.at(6));
+                player.assists                  = ReadStat(fields.at(7));
+                player.steals                   = ReadStat(fields.at(8));
+                player.blocks                   = ReadStat(fields.at(9));
+                player.turnovers                = ReadStat(fields.at(10));
+                player.fieldGoalsMade           = ReadStat(fields.at(11));
+                player.fieldGoalsAttempted      = ReadStat(fields.at(12));
+                player.freeThrowsMade           = ReadStat(fields.at(13));
+                player.freeThrowsAttempted      = ReadStat(fields.at(14));
+                player.threePointersMade        = ReadStat(fields.at(15));
+                player.threePointersAttempted   = ReadStat(fields.at(16));
             }
 
             records.push_back(player);

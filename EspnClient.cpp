@@ -7,6 +7,46 @@
 #include <string>
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
+
+namespace {
+    int readNonnegativeInt (const std::string& text) {
+        std::size_t consumed = 0;
+        int value = std::stoi(text, &consumed);
+
+        if (consumed != text.size() || value < 0) {
+            throw std::runtime_error("Invalid statistics: " + text);
+        }
+
+        return value;
+    }
+
+    std::pair<int, int> parseShooting(
+        const std::string& text
+    ) {
+        auto seperator = text.find('-');
+
+        if (seperator == std::string::npos) {
+            throw std::runtime_error("Expected made-attempted shooting stat: " + text);
+        }
+
+        int made = readNonnegativeInt(
+            text.substr(0, seperator)
+        );
+
+        int attempted = readNonnegativeInt(
+            text.substr(seperator + 1)
+        );
+
+        if (made > attempted) {
+            throw std::runtime_error(
+                "Made shots exceed attempts: " + text
+            );
+        }
+
+        return {made, attempted};
+    }
+}
 
 std::vector<std::string> EspnClient::getGameNames()
 {
@@ -121,10 +161,16 @@ std::vector<PlayerGameStats> EspnClient::getPlayerStats(const std::string &gameI
                     position - labels.begin());
             };
 
-            const auto minutesIndex = findIndex("MIN");
-            const auto pointsIndex = findIndex("PTS");
-            const auto reboundsIndex = findIndex("REB");
-            const auto assistsIndex = findIndex("AST");
+            const auto minutesIndex         = findIndex("MIN");
+            const auto pointsIndex          = findIndex("PTS");
+            const auto reboundsIndex        = findIndex("REB");
+            const auto assistsIndex         = findIndex("AST");
+            const auto stealsIndex          = findIndex("STL");
+            const auto blocksIndex          = findIndex("BLK");
+            const auto turnoversIndex       = findIndex("TO");
+            const auto fieldGoalsIndex      = findIndex("FG");
+            const auto threePointersIndex   = findIndex("3PT");
+            const auto freeThrowsIndex      = findIndex("FT");
 
             for (const auto &entry : group.at("athletes"))
             {
@@ -143,14 +189,38 @@ std::vector<PlayerGameStats> EspnClient::getPlayerStats(const std::string &gameI
                 {
                     const auto &stats = entry.at("stats");
 
-                    player.minutes =
-                        stats.at(minutesIndex).get<std::string>();
-                    player.points = std::stoi(
-                        stats.at(pointsIndex).get<std::string>());
-                    player.rebounds = std::stoi(
-                        stats.at(reboundsIndex).get<std::string>());
-                    player.assists = std::stoi(
-                        stats.at(assistsIndex).get<std::string>());
+                    auto textAt = [&](std::size_t index) {
+                        return stats.at(index).get<std::string>();
+                    };
+
+                    player.minutes                  = textAt(minutesIndex);
+                    player.points                   = readNonnegativeInt(textAt(pointsIndex));
+                    player.rebounds                 = readNonnegativeInt(textAt(reboundsIndex));
+                    player.assists                  = readNonnegativeInt(textAt(assistsIndex));
+                    player.steals                   = readNonnegativeInt(textAt(stealsIndex));
+                    player.blocks                   = readNonnegativeInt(textAt(blocksIndex));
+                    player.turnovers                = readNonnegativeInt(textAt(turnoversIndex));
+                    auto fieldGoals                 = parseShooting(textAt(fieldGoalsIndex));
+                    player.fieldGoalsMade           = fieldGoals.first;
+                    player.fieldGoalsAttempted      = fieldGoals.second;
+                    auto threes                     = parseShooting(textAt(threePointersIndex));
+                    player.threePointersMade        = threes.first;
+                    player.threePointersAttempted   = threes.second;
+                    auto freeThrows                 = parseShooting(textAt(freeThrowsIndex));
+                    player.freeThrowsMade           = freeThrows.first;
+                    player.freeThrowsAttempted      = freeThrows.second;
+
+                    int calculatedPoints =
+                        2 * player.fieldGoalsMade
+                        + player.threePointersMade
+                        + player.freeThrowsMade;
+
+                    if (calculatedPoints != player.points) {
+                        throw std::runtime_error(
+                            "Shooting totals do not match points for " 
+                            + player.playerName
+                        );
+                    }
                 }
 
                 results.push_back(player);
