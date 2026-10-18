@@ -6,4 +6,5 @@ struct Game {
     std::string homeTeam;
     std::string awayTeam;
     std::string status;
+    bool completed = false;
 };

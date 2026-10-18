@@ -31,7 +31,7 @@ std::vector<Game> EspnClient::getGames(const std::string& date)
 {
     std::string response = http.get(
         "https://site.api.espn.com/apis/site/v2/"
-        "sports/basketball/nba/scoreboard?dates" + date
+        "sports/basketball/nba/scoreboard?dates=" + date
     );
 
     auto data = nlohmann::json::parse(response);
@@ -48,6 +48,11 @@ std::vector<Game> EspnClient::getGames(const std::string& date)
                           .at("type")
                           .at("description")
                           .get<std::string>();
+
+        game.completed = event.at("status")
+                              .at("type")
+                              .at("completed")
+                              .get<bool>();
 
         const auto &competitors = event.at("competitions")
                                       .at(0)
