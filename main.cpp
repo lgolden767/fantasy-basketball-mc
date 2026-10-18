@@ -2,11 +2,13 @@
 #include "EspnClient.h"
 #include "Game.h"
 #include "StatsCsv.h"
+#include "PlayerAnalysis.h"
 
 #include <curl/curl.h>
 #include <iostream>
 #include <exception>
 #include <fstream>
+#include <iomanip>
 
 std::string csvQuote(const std::string& text) {
     std::string result = "\"";
@@ -57,6 +59,8 @@ int main() {
 
         int savedCount = 0;
 
+        std::vector<PlayerGameStats> allPlayers;
+
         for (const auto& game : games) {
             if (!game.completed) {
                 continue;
@@ -64,6 +68,8 @@ int main() {
 
             try {
                 auto players = espn.getPlayerStats(game.id);
+
+                allPlayers.insert(allPlayers.begin(), players.begin(), players.end());
 
                 if (players.empty()) {
                     std::cout << "No player stats for " << game.id << '\n';
@@ -82,6 +88,28 @@ int main() {
         }
 
         std::cout << "Exported " << savedCount << " games.\n";
+
+        std::string playerId;
+
+        std::cout << "Enter player ID: ";
+        std::cin >> playerId;
+
+        PlayerSummary summary = 
+            calculatePlayerAverages(allPlayers, playerId);
+
+        if (summary.gamesPlayed == 0) {
+            std::cout << "No games played for player "
+                      << playerId << ".\n";
+        } else {
+            std::cout << std::fixed << std::setprecision(2);
+
+            std::cout << "\nPlayer: " << summary.playerName << '\n'
+                      << "Games played: " << summary.gamesPlayed << '\n'
+                      << "Average points: " << summary.avgPoints << '\n'
+                      << "Average Rebounds: " << summary.avgRebounds << '\n'
+                      << "Average Assists: " << summary.avgAssists << '\n';
+        }
+
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";
         exitCode = 1;
