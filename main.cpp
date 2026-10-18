@@ -1,5 +1,6 @@
 #include "HttpClient.h"
 #include "EspnClient.h"
+#include "Game.h"
 
 #include <curl/curl.h>
 #include <iostream>
@@ -16,10 +17,19 @@ int main() {
     try {
         EspnClient espn;
 
-        auto names = espn.getGameNames();
+        std::vector<Game> games = espn.getGames();
 
-        for (const auto& name : names) {
-            std::cout << name << '\n';
+        if (games.empty()) {
+            std::cout << "No games returned.\n";
+        }
+
+        for (const auto& game : games) {
+            std::cout << game.awayTeam
+                      << " at "
+                      << game.homeTeam
+                      << " - "
+                      << game.status
+                      << '\n';
         }
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HttpClient.h"
+#include "Game.h"
 #include <string>
 #include <vector>
 
@@ -10,4 +11,5 @@ class EspnClient{
 
     public:
         std::vector<std::string> getGameNames();
+        std::vector<Game> getGames();
 };
