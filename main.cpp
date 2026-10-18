@@ -67,6 +67,12 @@ int main() {
                   << "Average rebounds: " << summary.avgRebounds << '\n'
                   << "Average assists: " << summary.avgAssists << '\n';
 
+        if (summary.pointsStdDev.has_value()) {
+            std::cout << "Points SD: " << summary.pointsStdDev.value() << '\n';
+        } else {
+            std::cout << "Points SD: Not enough games.\n";
+        }
+
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";
         exitCode = 1;

@@ -3,6 +3,7 @@
 #include "PlayerGameStats.h"
 #include <string>
 #include <vector>
+#include <optional>
 
 struct PlayerSummary {
     std::string playerId;
@@ -13,6 +14,8 @@ struct PlayerSummary {
     double avgPoints = 0.0;
     double avgRebounds = 0.0;
     double avgAssists = 0.0;
+
+    std::optional<double> pointsStdDev;
 };
 
 PlayerSummary calculatePlayerAverages(
