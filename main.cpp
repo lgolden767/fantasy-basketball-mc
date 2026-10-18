@@ -3,6 +3,7 @@
 #include "Game.h"
 #include "StatsCsv.h"
 #include "PlayerAnalysis.h"
+#include "simulation.h"
 
 #include <curl/curl.h>
 #include <iostream>
@@ -56,7 +57,36 @@ int main() {
             allPlayers.insert(allPlayers.end(), records.begin(), records.end());
         }
 
-        auto summary = calculatePlayerAverages(allPlayers, "5104157");
+        std::string playerId;
+        int threshold = 0;
+
+        std::cout << "Enter player ID: ";
+        std::cin >> playerId;
+
+        std::cout << "Enter points threshold: ";
+
+        if (!(std::cin >> threshold)) {
+            throw std::runtime_error("Please enter whole number threshold.");
+        }
+
+        auto result = simulatePoints(
+            allPlayers,
+            playerId,
+            threshold,
+            1000
+        );
+
+        std::cout << std::fixed << std::setprecision(2);
+
+        std::cout << "\nHistorical games: " 
+                  << result.historicalGames << '\n'
+                  << "Simulated games: "
+                  << result.simulations << '\n'
+                  << "Estimated probability of: "
+                  << threshold << "+ points: " 
+                  << result.probability * 100 << "%\n";
+
+        auto summary = calculatePlayerAverages(allPlayers, playerId);
 
         std::cout << std::fixed << std::setprecision(2);
 
