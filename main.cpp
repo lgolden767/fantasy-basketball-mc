@@ -5,6 +5,7 @@
 #include "PlayerAnalysis.h"
 #include "simulation.h"
 #include "FantasyScoring.h"
+#include "HistoricalImport.h"
 
 #include <curl/curl.h>
 #include <iostream>
@@ -14,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 int main() {
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
@@ -24,30 +26,53 @@ int main() {
     int exitCode = 0;
 
     try {
-        std::vector<PlayerGameStats> allPlayers;
 
-        std::vector<std::string> filenames = {
-            "401809238_stats.csv",
-            "401809239_stats.csv",
-            "401809240_stats.csv",
-            "401809241_stats.csv",
-            "401809242_stats.csv",
-            "401810824_stats.csv",
-            "401810825_stats.csv",
-            "401810826_stats.csv",
-            "401810827_stats.csv",
-            "401810828_stats.csv",
-            "401810829_stats.csv",
-            "401810830_stats.csv"
-        };
+        char loadNewData;
+
+        std::cout << "Load new data? (y/n): ";
+        std::cin >> loadNewData;
+
+        if (loadNewData == 'y' || loadNewData == 'Y') {
+            EspnClient espn;
+
+            std::string startDate;
+            std::string endDate;
+
+            std::cout << "Start date (YYYYMMDD): ";
+            std::cin >> startDate;
+
+            std::cout << "End date (YYYYMMDD): ";
+            std::cin >> endDate;
+
+            importDateRange(espn, startDate, endDate);
+        }
+
+        std::vector<PlayerGameStats> allPlayers;
+        int filesLoaded = 0;
 
         std::vector<long long> weeklyTotals;
 
-        for (const auto& filename : filenames) {
+        for (const auto& entry : std::filesystem::directory_iterator("Data/expanded")) {
+            if (!entry.is_regular_file() || entry.path().extension() != ".csv") {
+                continue;
+            }
+
+            std::string filename = 
+            "expanded/" + entry.path().filename().string();
+
             auto records = loadPlayerStats(filename);
 
-            allPlayers.insert(allPlayers.end(), records.begin(), records.end());
+            allPlayers.insert(
+                allPlayers.end(),
+                records.begin(),
+                records.end()
+            );
+
+            ++filesLoaded;
         }
+
+        std::cout << "Files loaded: " << filesLoaded << '\n'
+                  << "Player records loaded: " << allPlayers.size() << '\n';
 
         std::string playerId;
         int gamesPerWeek = 0;
