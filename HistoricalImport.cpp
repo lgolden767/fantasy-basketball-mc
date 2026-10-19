@@ -62,6 +62,7 @@ void importDateRange(
     }
 
     std::filesystem::create_directories("Data/expanded");
+    std::filesystem::create_directories("Data/metadata");
 
     int saved = 0;
     int skipped = 0;
@@ -76,7 +77,7 @@ void importDateRange(
             auto games = espn.getGames(date);
 
             std::this_thread::sleep_for(
-                std::chrono::seconds{1}
+                std::chrono::milliseconds{50}
             );
 
             for (const auto& game : games) {
@@ -84,7 +85,7 @@ void importDateRange(
                     continue;
                 }
 
-                std::string filename = "expanded/" + game.id + "_stats.csv";
+                std::string filename = "metadata/" + game.id + "_stats.csv";
 
                 std::filesystem::path path = std::filesystem::path{"Data"} / filename;
 
@@ -100,6 +101,12 @@ void importDateRange(
                         throw std::runtime_error("No player statistics returned.");
                     }
 
+                    for (auto& player : players) {
+                        player.gameDate   = game.gameDate;
+                        player.seasonYear = game.seasonYear;
+                        player.seasonType = game.seasonType;
+                    }
+
                     savePlayerStats(players, filename);
 
                     std::cout << "Saved " << path.string() << '\n';
@@ -112,7 +119,7 @@ void importDateRange(
                 }
 
                 std::this_thread::sleep_for(
-                    std::chrono::seconds{1}
+                    std::chrono::milliseconds{50}
                 );
             }
         } catch (const std::exception& error) {
@@ -122,7 +129,7 @@ void importDateRange(
                       << ": " << error.what() << '\n';
 
                     std::this_thread::sleep_for(
-                        std::chrono::seconds{1}
+                        std::chrono::milliseconds{50}
                     );
         }
     }

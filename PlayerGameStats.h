@@ -7,6 +7,10 @@ struct PlayerGameStats {
     std::string playerName;
     std::string gameId;
 
+    std::string gameDate;
+    int seasonYear = 0;
+    int seasonType = 0;
+
     bool didNotPlay = false;
     std::string minutes;
 
