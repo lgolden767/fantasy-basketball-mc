@@ -1,4 +1,7 @@
+#pragma once
+
 #include "PlayerGameStats.h"
+#include "FantasyScoring.h"
 
 #include <cstddef>
 #include <string>
@@ -23,6 +26,18 @@ struct WeeklySimulationResult {
     long long p90 = 0.0;
 };
 
+struct WeeklyFantasyResult {
+    std::size_t historicalGames = 0;
+    int simulations = 0;
+    int successess = 0;
+
+    double probability = 0.0;
+    double meanPoints = 0.0;
+    double p10 = 0.0;
+    double median = 0.0;
+    double p90 = 0.0;
+};
+
 SimulationResult simulatePoints(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId,
@@ -37,5 +52,15 @@ WeeklySimulationResult simulateWeeklyPoints(
     int gamesPerWeek,
     int threshold,
     int simluations,
+    unsigned int seed = 42
+);
+
+WeeklyFantasyResult simulateWeeklyFantasyPoints(
+    const std::vector<PlayerGameStats>& records,
+    const std::string& playerId,
+    int gamesPerWeek,
+    double threshold,
+    int simulations,
+    const ScoringRules& rules,
     unsigned int seed = 42
 );
