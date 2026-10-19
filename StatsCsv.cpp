@@ -66,13 +66,14 @@ void savePlayerStats(
 
     file << "game_id,player_id,player_name,did_not_play,"
         "minutes,points,rebounds,assists,steals,blocks,"
-        "turnovers,fgm,fga,ftm,fta,three_pm,three_pa\n";
+        "turnovers,fgm,fga,ftm,fta,three_pm,three_pa,"
+        "game_date,season_year,season_type\n";
 
     for (const auto& player : players) {
         file << csvQuote(player.gameId) << ","
-                << csvQuote(player.playerId) << ","
-                << csvQuote(player.playerName) << ","
-                << csvQuote(player.didNotPlay ? "true" : "false") << ",";
+             << csvQuote(player.playerId) << ","
+             << csvQuote(player.playerName) << ","
+             << csvQuote(player.didNotPlay ? "true" : "false") << ",";
 
         if (player.didNotPlay) {
             for (int column = 0; column < 13; ++column) {
@@ -80,8 +81,6 @@ void savePlayerStats(
                     file << ',';
                 }
             }
-
-            file << '\n';
         }
         else {
             file << csvQuote(player.minutes) << ','
@@ -96,8 +95,13 @@ void savePlayerStats(
                     << player.freeThrowsMade << ','
                     << player.freeThrowsAttempted << ','
                     << player.threePointersMade << ','
-                    << player.threePointersAttempted << '\n';
+                    << player.threePointersAttempted;
         }
+
+        file << ',' << csvQuote(player.gameDate)
+             << ',' << player.seasonYear
+             << ',' << player.seasonType
+             << '\n';
         
     }
 
@@ -146,7 +150,10 @@ std::vector<PlayerGameStats> loadPlayerStats(
         "ftm",
         "fta",
         "three_pm",
-        "three_pa"
+        "three_pa",
+        "game_date",
+        "season_year",
+        "season_type"
     };
 
     if (parseCsvRow(line) != expectedHeader) {
@@ -170,8 +177,8 @@ std::vector<PlayerGameStats> loadPlayerStats(
         try{
             auto fields = parseCsvRow(line);
 
-            if (fields.size() != 17) {
-                throw std::runtime_error("Expected 17 fields.");
+            if (fields.size() != 20) {
+                throw std::runtime_error("Expected 20 fields.");
             }
 
             PlayerGameStats player;
@@ -179,6 +186,9 @@ std::vector<PlayerGameStats> loadPlayerStats(
             player.gameId       = fields.at(0);
             player.playerId     = fields.at(1);
             player.playerName   = fields.at(2);
+            player.gameDate     = fields.at(17);
+            player.seasonYear   = std::stoi(fields.at(18));
+            player.seasonType   = std::stoi(fields.at(19));
 
             if (fields.at(3) == "true") {
                 player.didNotPlay = true;

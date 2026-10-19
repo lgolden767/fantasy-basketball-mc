@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
+#include <iostream>
 
 namespace {
     int readNonnegativeInt (const std::string& text) {
@@ -81,6 +82,16 @@ std::vector<Game> EspnClient::getGames(const std::string& date)
     for (const auto &event : data.at("events"))
     {
         Game game;
+
+        std::cout << "Event: " << event.at("id") << '\n'
+                  << "Date: " << event.at("date") << '\n'
+                  << "Season: "
+                  << event.value("season", nlohmann::json::object()).dump(2)
+                  << '\n';
+
+        game.gameDate = event.at("date").get<std::string>();
+        game.seasonYear = event.at("season").at("year").get<int>();
+        game.seasonType = event.at("season").at("type").get<int>();
 
         game.id = event.at("id").get<std::string>();
 

@@ -22,3 +22,8 @@ PlayerSummary calculatePlayerAverages(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId
 );
+
+void printPlayerHistory(
+    const std::vector<PlayerGameStats>& records,
+    const std::string& playerId
+);

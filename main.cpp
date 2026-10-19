@@ -52,13 +52,13 @@ int main() {
 
         std::vector<long long> weeklyTotals;
 
-        for (const auto& entry : std::filesystem::directory_iterator("Data/expanded")) {
+        for (const auto& entry : std::filesystem::directory_iterator("Data/metadata")) {
             if (!entry.is_regular_file() || entry.path().extension() != ".csv") {
                 continue;
             }
 
             std::string filename = 
-            "expanded/" + entry.path().filename().string();
+            "metadata/" + entry.path().filename().string();
 
             auto records = loadPlayerStats(filename);
 
@@ -74,12 +74,28 @@ int main() {
         std::cout << "Files loaded: " << filesLoaded << '\n'
                   << "Player records loaded: " << allPlayers.size() << '\n';
 
+        std::vector<PlayerGameStats> filteredPlayers;
+
+        for (const auto& record : allPlayers) {
+            if (record.seasonType != 2) {
+                continue;
+            }
+
+            if (record.seasonYear < 2022 || record.seasonYear > 2026) {
+                continue;
+            }
+
+            filteredPlayers.push_back(record);
+        }
+
         std::string playerId;
         int gamesPerWeek = 0;
         double threshold = 0.0;
 
         std::cout << "Enter player ID: ";
         std::cin >> playerId;
+
+        printPlayerHistory(filteredPlayers, playerId);
 
         std::cout << "Games in week: ";
 
@@ -96,7 +112,7 @@ int main() {
         ScoringRules rules;
 
         auto result = simulateWeeklyFantasyPoints(
-            allPlayers,
+            filteredPlayers,
             playerId,
             gamesPerWeek,
             threshold,
