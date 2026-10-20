@@ -105,6 +105,10 @@ void printPlayerHistory(
             earliest = date;
         }
 
+        if (latest.empty() || date > latest) {
+            latest = date;
+        }
+
         ++counts[{record.seasonYear, record.seasonType}];
     }
 

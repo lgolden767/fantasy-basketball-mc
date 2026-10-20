@@ -6,6 +6,7 @@
 #include "simulation.h"
 #include "FantasyScoring.h"
 #include "HistoricalImport.h"
+#include "Backtest.h"
 
 #include <curl/curl.h>
 #include <iostream>
@@ -50,8 +51,6 @@ int main() {
         std::vector<PlayerGameStats> allPlayers;
         int filesLoaded = 0;
 
-        std::vector<long long> weeklyTotals;
-
         for (const auto& entry : std::filesystem::directory_iterator("Data/metadata")) {
             if (!entry.is_regular_file() || entry.path().extension() != ".csv") {
                 continue;
@@ -89,56 +88,14 @@ int main() {
         }
 
         std::string playerId;
-        int gamesPerWeek = 0;
-        double threshold = 0.0;
+        ScoringRules rules;
 
         std::cout << "Enter player ID: ";
         std::cin >> playerId;
 
         printPlayerHistory(filteredPlayers, playerId);
+        backtestPlayer(allPlayers, playerId, rules);
 
-        std::cout << "Games in week: ";
-
-        if (!(std::cin >> gamesPerWeek)) {
-            throw std::invalid_argument("Invalid game count..");
-        }
-
-        std::cout << "Weekly fantasy-points threshold: ";
-
-        if (!(std::cin >> threshold)) {
-            throw std::invalid_argument("Invalid threshold.");
-        }
-
-        ScoringRules rules;
-
-        auto result = simulateWeeklyFantasyPoints(
-            filteredPlayers,
-            playerId,
-            gamesPerWeek,
-            threshold,
-            10000,
-            rules
-        );
-
-        std::cout << std::fixed << std::setprecision(2);
-
-        std::cout << "\nHistorical games: "
-                  << result.historicalGames << '\n'
-                  << "Simulated weeks: "
-                  << result.simulations << '\n'
-                  << "Games per week: "
-                  << gamesPerWeek << '\n'
-                  << "Mean weekly fantasy points: "
-                  << result.meanPoints << '\n'
-                  << "10th percentile: "
-                  << result.p10 << '\n'
-                  << "Median: "
-                  << result.median << '\n'
-                  << "90th percentile: "
-                  << result.p90 << '\n'
-                  << "Probability of "
-                  << threshold << "+ fantasy points: "
-                  << result.probability * 100.0 << "%\n";
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";
         exitCode = 1;

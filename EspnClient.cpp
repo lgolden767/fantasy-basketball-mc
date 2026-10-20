@@ -81,6 +81,10 @@ std::vector<Game> EspnClient::getGames(const std::string& date)
 
     for (const auto &event : data.at("events"))
     {
+        const auto& competition = event.at("competitions").at(0);
+
+        if (competition.at("type").value("abbreviation", "") == "ALLSTAR") continue;
+
         Game game;
 
         std::cout << "Event: " << event.at("id") << '\n'
