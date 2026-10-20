@@ -87,14 +87,73 @@ int main() {
             filteredPlayers.push_back(record);
         }
 
-        std::string playerId;
         ScoringRules rules;
 
-        std::cout << "Enter player ID: ";
-        std::cin >> playerId;
+        const std::vector<std::string> playerIds = {
+            "1966",
+            "3202",
+            "3975",
+            "3945274",
+            "4594268",
+            "4065648"
+        };
 
-        printPlayerHistory(filteredPlayers, playerId);
-        backtestPlayer(allPlayers, playerId, rules);
+        std::ofstream report("Data/processed/backtest_results.csv");
+
+        if (!report) {
+            throw std::runtime_error(
+                "Could not open backtest_results.csv"
+            );
+        }
+
+        report << "player_id,groups_tested,"
+               << "baseline_mae,rolling_mae,"
+               << "baseline_bias,rolling_bias,"
+               << "baseline_coverage_percent,rolling_coverage_percent,"
+               << "baseline_interval_width,rolling_interval_width\n";
+        
+        report << std::fixed << std::setprecision(4);
+
+        int successfulPlayers = 0;
+
+        for (const auto& playerId : playerIds) {
+            std::cout << "\nBacktesting player " << playerId << "...\n";
+
+            try {
+                auto result = backtestPlayer(
+                    allPlayers,
+                    playerId,
+                    rules
+                );
+
+                report << result.playerId << ','
+                       << result.groupsTested << ','
+                       << result.baseline.meanAbsoluteError << ','
+                       << result.rolling.meanAbsoluteError << ','
+                       << result.baseline.meanSignedError << ','
+                       << result.rolling.meanSignedError << ','
+                       << result.baseline.coveragePercent << ','
+                       << result.rolling.coveragePercent << ','
+                       << result.baseline.averageIntervalWidth << ','
+                       << result.rolling.averageIntervalWidth << '\n';
+                
+                ++successfulPlayers;
+            } catch (const std::exception& error) {
+                std::cerr << "Skipped player " << playerId
+                          << ": " << error.what() << '\n';
+            }
+        }
+
+        report.close();
+
+        if (!report) {
+            throw std::runtime_error(
+                "Could not finish writing backtest_results.csv"
+            );
+        }
+
+        std::cout << "\nSaved results for " << successfulPlayers
+                  << " players to backtest_results.csv\n";
 
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";
