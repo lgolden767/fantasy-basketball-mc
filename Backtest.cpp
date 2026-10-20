@@ -11,8 +11,15 @@
 BacktestResult backtestPlayer(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId,
-    const ScoringRules& rules
+    const ScoringRules& rules,
+    std::size_t historyWindow
 ) {
+    if (historyWindow < 2) {
+        throw std::invalid_argument(
+            "History window must be at least two games"
+        );
+    }
+
     std::vector<PlayerGameStats> training;
     std::vector<PlayerGameStats> testing;
 
@@ -102,8 +109,6 @@ BacktestResult backtestPlayer(
     int insideCount = 0;
 
     std::vector<PlayerGameStats> availableHistory = training;
-
-    constexpr std::size_t historyWindow = 30;
 
     double rollingAbsoluteError = 0.0;
     double rollingSignedError = 0.0;
@@ -246,6 +251,7 @@ BacktestResult backtestPlayer(
 
     result.playerId = playerId;
     result.groupsTested = groups;
+    result.historyWindow = historyWindow;
 
     result.baseline.meanAbsoluteError =
         absoluteErrorTotal / groups;
