@@ -90,14 +90,42 @@ int main() {
         ScoringRules rules;
 
         const std::vector<std::string> playerIds = {
-            "1966",
-            "3202",
-            "3975",
-            "3945274",
-            "4594268",
-            "4065648"
+            "1966",       // Lebron James
+            "3202",       // Kevin Durant
+            "3975",       // Steph Curry
+            "3945274",    // Luka Doncic
+            "4594268",    // Anthony Edwards
+            "4065648",    // Jayson Tatum
+            "3992",       // James Harden
+            "3934672",    // Jalen Brunson
+            "4432166",    // Cade Cunningham
+            "4431678",    // Tyrese Maxey
+            "3136193",    // Devin Booker
+            "3908809",    // Donovan Mitchell
+            "3078576",    // Derrick White
+            "2991350",    // Alex Caruso
+            "3062679",    // Josh Hart
+            "3147657",    // Mikal Bridges
+            "4433134",    // Scottie Barnes
+            "4432573",    // Paolo Banchero
+            "3032977",    // Giannis Antetokounmpo
+            "6589",       // Draymond Green
+            "3064290",    // Aaron Gordon
+            "3112335",    // Nikola Jokic
+            "4066261",    // Bam Adebayo
+            "3032976",    // Rudy Gobert
+            "3448",       // Brook Lopez
+            "4871144"     // Alperen Sengun
         };
 
+        const std::vector<std::size_t> historyWindows = {
+            15,
+            30,
+            45,
+            60
+        };
+
+        std::filesystem::create_directories("Data/processed");
         std::ofstream report("Data/processed/backtest_results.csv");
 
         if (!report) {
@@ -106,7 +134,7 @@ int main() {
             );
         }
 
-        report << "player_id,groups_tested,"
+        report << "player_id,history_window,groups_tested,"
                << "baseline_mae,rolling_mae,"
                << "baseline_bias,rolling_bias,"
                << "baseline_coverage_percent,rolling_coverage_percent,"
@@ -114,36 +142,186 @@ int main() {
         
         report << std::fixed << std::setprecision(4);
 
-        int successfulPlayers = 0;
+        int successfulRuns = 0;
+
+        std::vector<BacktestResult> allResults;
 
         for (const auto& playerId : playerIds) {
-            std::cout << "\nBacktesting player " << playerId << "...\n";
+            for (std::size_t window : historyWindows) {
+                std::cout << "\nBacktesting player " << playerId 
+                          << " | Window: " << window << " games\n";
 
-            try {
-                auto result = backtestPlayer(
-                    allPlayers,
-                    playerId,
-                    rules
-                );
+                try {
+                    auto result = backtestPlayer(
+                        allPlayers,
+                        playerId,
+                        rules,
+                        window
+                    );
 
-                report << result.playerId << ','
-                       << result.groupsTested << ','
-                       << result.baseline.meanAbsoluteError << ','
-                       << result.rolling.meanAbsoluteError << ','
-                       << result.baseline.meanSignedError << ','
-                       << result.rolling.meanSignedError << ','
-                       << result.baseline.coveragePercent << ','
-                       << result.rolling.coveragePercent << ','
-                       << result.baseline.averageIntervalWidth << ','
-                       << result.rolling.averageIntervalWidth << '\n';
-                
-                ++successfulPlayers;
-            } catch (const std::exception& error) {
-                std::cerr << "Skipped player " << playerId
-                          << ": " << error.what() << '\n';
+                    allResults.push_back(result);
+
+                    report  << result.playerId << ','
+                            << result.historyWindow << ','
+                            << result.groupsTested << ','
+                            << result.baseline.meanAbsoluteError << ','
+                            << result.rolling.meanAbsoluteError << ','
+                            << result.baseline.meanSignedError << ','
+                            << result.rolling.meanSignedError << ','
+                            << result.baseline.coveragePercent << ','
+                            << result.rolling.coveragePercent << ','
+                            << result.baseline.averageIntervalWidth << ','
+                            << result.rolling.averageIntervalWidth << '\n';
+                    
+                    ++successfulRuns;
+                } catch (const std::exception& error) {
+                    std::cerr << "Skipped player " << playerId
+                            << ": " << error.what() << '\n';
+                }
             }
         }
 
+        std::ofstream summaryFile(
+            "Data/processed/backtest_summary.csv"
+        );
+
+        if (!summaryFile) {
+            throw std::runtime_error(
+                "Could not open backtest_summary.csv"
+            );
+        }
+
+        summaryFile << "history_window,players,groups,"
+                    << "baseline_player_mae,rolling_player_mae,"
+                    << "baseline_group_mae,rolling_group_mae,"
+                    << "players_improved_percent,"
+                    << "baseline_coverage_percent,rolling_coverage_percent,"
+                    << "baseline_interval_width,rolling_interval_width\n";
+        
+        summaryFile << std::fixed << std::setprecision(4);
+
+        for (std::size_t window : historyWindows) {
+            int playerCount = 0;
+            int improvedCount = 0;
+            long long totalGroups = 0;
+
+            double baselinePlayerMaeTotal = 0.0;
+            double rollingPlayerMaeTotal = 0.0;
+
+            double baselineWeightedMaeTotal = 0.0;
+            double rollingWeightedMaeTotal = 0.0;
+
+            double baselineWeightedCoverageTotal = 0.0;
+            double rollingWeightedCoverageTotal = 0.0;
+
+            double baselineWeightedWidthTotal = 0.0;
+            double rollingWeightedWidthTotal = 0.0;
+
+            for (const auto& result : allResults) {
+                if (result.historyWindow != window ||
+                    result.groupsTested <= 0) {
+                    continue;
+                }
+
+                ++playerCount;
+                totalGroups += result.groupsTested;
+
+                double weight =
+                    static_cast<double>(result.groupsTested);
+                
+                baselinePlayerMaeTotal +=
+                    result.baseline.meanAbsoluteError;
+                
+                rollingPlayerMaeTotal +=
+                    result.rolling.meanAbsoluteError;
+
+                baselineWeightedMaeTotal +=
+                    result.baseline.meanAbsoluteError * weight;
+
+                rollingWeightedMaeTotal +=
+                    result.rolling.meanAbsoluteError * weight;
+
+                baselineWeightedCoverageTotal +=
+                    result.baseline.coveragePercent * weight;
+
+                rollingWeightedCoverageTotal +=
+                    result.rolling.coveragePercent * weight;
+
+                baselineWeightedWidthTotal +=
+                    result.baseline.averageIntervalWidth * weight;
+
+                rollingWeightedWidthTotal +=
+                    result.rolling.averageIntervalWidth * weight;
+
+                if (result.rolling.meanAbsoluteError <
+                    result.baseline.meanAbsoluteError) {
+                    ++improvedCount;
+                }
+            }
+            
+            if (playerCount == 0 || totalGroups == 0) continue;
+
+            double baselinePlayerMae =
+                baselinePlayerMaeTotal / playerCount;
+
+            double rollingPlayerMae =
+                rollingPlayerMaeTotal / playerCount;
+
+            double baselineGroupMae = 
+                baselineWeightedMaeTotal / totalGroups;
+
+            double rollingGroupMae =    
+                rollingWeightedMaeTotal / totalGroups;
+            
+            double improvedPercent =    
+                100.0 * improvedCount / playerCount;
+
+            double baselineCoverage =
+                baselineWeightedCoverageTotal / totalGroups;
+
+            double rollingCoverage =   
+                rollingWeightedCoverageTotal / totalGroups;
+
+            double baselineWidth =
+                baselineWeightedWidthTotal / totalGroups;
+
+            double rollingWidth =
+                rollingWeightedWidthTotal / totalGroups;
+
+                summaryFile << window << ','
+                            << playerCount << ','
+                            << totalGroups << ','
+                            << baselinePlayerMae << ','
+                            << rollingPlayerMae << ','
+                            << baselineGroupMae << ','
+                            << rollingGroupMae << ','
+                            << improvedPercent << ','
+                            << baselineCoverage << ','
+                            << rollingCoverage << ','
+                            << baselineWidth << ','
+                            << rollingWidth << '\n';
+                
+                std::cout << std::fixed << std::setprecision(2)
+                          << "\nWindow: " << window << " games\n"
+                          << "Players: " << playerCount << '\n'
+                          << "Test groups: " << totalGroups << '\n'
+                          << "Equal-player MAE: "
+                          << baselinePlayerMae << " -> "
+                          << rollingPlayerMae << '\n'
+                          << "Group-weighted MAE: "
+                          << baselineGroupMae << " -> "
+                          << rollingGroupMae << '\n'
+                          << "Players improved: "
+                          << improvedPercent << "%\n"
+                          << "Coverage: "
+                          << baselineCoverage << "% -> "
+                          << rollingCoverage << "%\n"
+                          << "Average interval width: "
+                          << baselineWidth << " -> "
+                          << rollingWidth << '\n';
+        }
+
+        summaryFile.close();
         report.close();
 
         if (!report) {
@@ -151,9 +329,16 @@ int main() {
                 "Could not finish writing backtest_results.csv"
             );
         }
+        if (!summaryFile) {
+            throw std::runtime_error(
+                "Could not finish writing backtest_summary.csv"
+            );
+        }
 
-        std::cout << "\nSaved results for " << successfulPlayers
-                  << " players to backtest_results.csv\n";
+        std::cout << "\nSaved " << successfulRuns
+                  << " comparisons to "
+                  << "Data/processed/backtest_results.csv\n";
+        std::cout << "\nSaved Data/processed/backtest_summary.csv\n";
 
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << "\n";

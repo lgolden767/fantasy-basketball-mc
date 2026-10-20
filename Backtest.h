@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <cstddef>
 
 struct ModelMetrics {
     double meanAbsoluteError = 0.0;
@@ -17,6 +18,8 @@ struct BacktestResult {
     std::string playerId;
     int groupsTested = 0;
 
+    std::size_t historyWindow = 0;
+
     ModelMetrics baseline;
     ModelMetrics rolling;
 };
@@ -24,6 +27,7 @@ struct BacktestResult {
 BacktestResult backtestPlayer(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId,
-    const ScoringRules& rules
+    const ScoringRules& rules,
+    std::size_t historyWindow = 30
 );
 
