@@ -6,7 +6,22 @@
 #include <string>
 #include <vector>
 
-void backtestPlayer(
+struct ModelMetrics {
+    double meanAbsoluteError = 0.0;
+    double meanSignedError = 0.0;
+    double coveragePercent = 0.0;
+    double averageIntervalWidth = 0.0;
+};
+
+struct BacktestResult {
+    std::string playerId;
+    int groupsTested = 0;
+
+    ModelMetrics baseline;
+    ModelMetrics rolling;
+};
+
+BacktestResult backtestPlayer(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId,
     const ScoringRules& rules

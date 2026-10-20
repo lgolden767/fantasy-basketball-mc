@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <unordered_set>
 
-void backtestPlayer(
+BacktestResult backtestPlayer(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId,
     const ScoringRules& rules
@@ -108,6 +108,8 @@ void backtestPlayer(
     double rollingAbsoluteError = 0.0;
     double rollingSignedError = 0.0;
 
+    double rollingIntervalWidthTotal = 0.0;
+
     int rollingInsideCount = 0;
 
     std::cout << std::left
@@ -154,6 +156,9 @@ void backtestPlayer(
             rules,
             42
         );
+
+        rollingIntervalWidthTotal +=
+            rollingPrediction.p90 - rollingPrediction.p10;
 
         double actualTotal = 0.0;
 
@@ -230,4 +235,41 @@ void backtestPlayer(
               << rollingSignedError / groups << '\n'
               << "80% interval coverage: "
               << 100.0 * rollingInsideCount / groups << "%\n";
+
+    std::cout << "\nAverage 80% interval width:\n"
+              << "Baseline: "
+              << prediction.p90 - prediction.p10 << '\n'
+              << "Rolling: "
+              << rollingIntervalWidthTotal / groups << '\n';
+
+    BacktestResult result;
+
+    result.playerId = playerId;
+    result.groupsTested = groups;
+
+    result.baseline.meanAbsoluteError =
+        absoluteErrorTotal / groups;
+    
+    result.baseline.meanSignedError =
+        signedErrorTotal / groups;
+    
+    result.baseline.coveragePercent =
+        100.0 * insideCount / groups;
+    
+    result.baseline.averageIntervalWidth =
+        prediction.p90 - prediction.p10;
+    
+    result.rolling.meanAbsoluteError =
+        rollingAbsoluteError / groups;
+    
+    result.rolling.meanSignedError =
+        rollingSignedError / groups;
+    
+    result.rolling.coveragePercent =
+        100.0 * rollingInsideCount / groups;
+    
+    result.rolling.averageIntervalWidth =
+        rollingIntervalWidthTotal / groups;
+
+    return result;
 }
