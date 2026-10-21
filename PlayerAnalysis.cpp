@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <utility>
+#include <algorithm>
 
 PlayerSummary calculatePlayerAverages(
     const std::vector<PlayerGameStats>& records,
@@ -127,4 +128,82 @@ void printPlayerHistory(
         std::cout << "Season year: " << season.first
                   << " | Games played: " << count << '\n';
     }
+}
+
+std::vector<PlayerGameStats> getRecentPlayerGames(
+    const std::vector<PlayerGameStats>& records,
+    const std::string& playerId,
+    std::size_t limit
+) {
+    if (limit < 2) {
+        throw std::invalid_argument(
+            "History limit must be at least two."
+        );
+    }
+
+    std::vector<PlayerGameStats> history;
+
+    for (const auto& record : records) {
+        if (record.playerId != playerId ||
+            record.didNotPlay           ||
+            record.seasonType != 2) {
+            continue;
+        }
+
+        if (record.gameId == "401838140" ||
+            record.gameId == "401838141" ||
+            record.gameId == "401838142" ||
+            record.gameId == "401838143") {
+            continue;
+        }
+
+        if (record.gameDate.empty()) {
+            throw std::runtime_error(
+                "Missing date for game " + record.gameId
+            );
+        }
+
+        history.push_back(record);
+    }
+
+    std::sort(
+        history.begin(),
+        history.end(),
+        [](const PlayerGameStats& a, const PlayerGameStats& b) {
+            if (a.gameDate == b.gameDate) {
+                return a.gameId < b.gameId;
+            }
+
+            return a.gameDate < b.gameDate;
+        }
+    );
+
+    std::unordered_set<std::string> countedGames;
+    std::vector<PlayerGameStats> uniqueHistory;
+
+    for (const auto& record : history) {
+        if (countedGames.insert(record.gameId).second) {
+            uniqueHistory.push_back(record);
+        }
+    }
+
+    if (uniqueHistory.size() < 2) {
+        throw std::invalid_argument(
+            "Need at least two played games for this player."
+        );
+    }
+
+    if (uniqueHistory.size() > limit) {
+        const auto removeCount =
+            static_cast<std::vector<PlayerGameStats>::difference_type>(
+                uniqueHistory.size() - limit
+            );
+        
+        uniqueHistory.erase(
+            uniqueHistory.begin(),
+            uniqueHistory.begin() + removeCount
+        );
+    }
+
+    return uniqueHistory;
 }
