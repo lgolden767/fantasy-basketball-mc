@@ -12,6 +12,9 @@ struct ModelMetrics {
     double meanSignedError = 0.0;
     double coveragePercent = 0.0;
     double averageIntervalWidth = 0.0;
+    int belowRange = 0;
+    int insideRange = 0;
+    int aboveRange = 0;
 };
 
 struct BacktestResult {

@@ -7,6 +7,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <unordered_set>
+#include <filesystem>
+#include <fstream>
 
 BacktestResult backtestPlayer(
     const std::vector<PlayerGameStats>& records,
@@ -94,6 +96,32 @@ BacktestResult backtestPlayer(
         42
     );
 
+    const int testSeason = testing.front().seasonYear;
+
+    std::filesystem::create_directories("Data/processed");
+
+    const std::string detailFilename =
+        "Data/processed/backtest_details_" +
+        std::to_string(testSeason) + "_" +
+        playerId + "_" +
+        std::to_string(historyWindow) + ".csv";
+
+    std::ofstream details(detailFilename);
+
+    if (!details) {
+        throw std::runtime_error(
+            "Could not open " + detailFilename
+        );
+    }
+
+    details << "player_id,test_season,history_window,group,"
+            << "first_game_date,last_game_date,"
+            << "baseline_mean,baseline_p10,baseline_p90,"
+            << "rolling_mean,rolling_p10,rolling_p90,"
+            << "actual_total\n";
+
+    details << std::fixed << std::setprecision(4);
+
     std::cout << std::fixed << std::setprecision(2);
 
     std::cout << "\nTraining games: " << training.size()
@@ -107,6 +135,12 @@ BacktestResult backtestPlayer(
 
     int groups = 0;
     int insideCount = 0;
+
+    int baselineBelowCount = 0;
+    int baselineAboveCount = 0;
+
+    int rollingBelowCount = 0;
+    int rollingAboveCount = 0;
 
     std::vector<PlayerGameStats> availableHistory = training;
 
@@ -174,6 +208,18 @@ BacktestResult backtestPlayer(
             );
         }
 
+        if (actualTotal < prediction.p10) {
+            ++baselineBelowCount;
+        } else if (actualTotal > prediction.p90) {
+            ++baselineAboveCount;
+        }
+
+        if (actualTotal < rollingPrediction.p10) {
+            ++rollingBelowCount;
+        } else if (actualTotal > rollingPrediction.p90) {
+            ++rollingAboveCount;
+        }
+
         double rollingError =
             rollingPrediction.meanPoints - actualTotal;
 
@@ -202,6 +248,20 @@ BacktestResult backtestPlayer(
         signedErrorTotal += error;
 
         ++groups;
+
+        details << playerId << ','
+                << testSeason << ','
+                << historyWindow << ','
+                << groups << ','
+                << testing.at(start).gameDate << ','
+                << testing.at(start + gamesPerGroup - 1).gameDate << ','
+                << prediction.meanPoints << ','
+                << prediction.p10 << ','
+                << prediction.p90 << ','
+                << rollingPrediction.meanPoints << ','
+                << rollingPrediction.p10 << ','
+                << rollingPrediction.p90 << ','
+                << actualTotal << '\n';
 
         std::cout << std::left
                   << std::setw(8) << groups
@@ -276,6 +336,14 @@ BacktestResult backtestPlayer(
     
     result.rolling.averageIntervalWidth =
         rollingIntervalWidthTotal / groups;
+
+    result.baseline.belowRange = baselineBelowCount;
+    result.baseline.insideRange = insideCount;
+    result.baseline.aboveRange = baselineAboveCount;
+
+    result.rolling.belowRange = rollingBelowCount;
+    result.rolling.insideRange = rollingInsideCount;
+    result.rolling.aboveRange = rollingAboveCount;
 
     return result;
 }
