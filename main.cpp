@@ -205,6 +205,14 @@ int main() {
             int improvedCount = 0;
             long long totalGroups = 0;
 
+            long long baselineBelow = 0;
+            long long baselineInside = 0;
+            long long baselineAbove = 0;
+
+            long long rollingBelow = 0;
+            long long rollingInside = 0;
+            long long rollingAbove = 0;
+
             double baselinePlayerMaeTotal = 0.0;
             double rollingPlayerMaeTotal = 0.0;
 
@@ -225,6 +233,14 @@ int main() {
 
                 ++playerCount;
                 totalGroups += result.groupsTested;
+
+                baselineBelow += result.baseline.belowRange;
+                baselineInside += result.baseline.insideRange;
+                baselineAbove += result.baseline.aboveRange;
+
+                rollingBelow += result.rolling.belowRange;
+                rollingInside += result.rolling.insideRange;
+                rollingAbove += result.rolling.aboveRange;
 
                 double weight =
                     static_cast<double>(result.groupsTested);
@@ -260,6 +276,23 @@ int main() {
             }
             
             if (playerCount == 0 || totalGroups == 0) continue;
+
+            auto percent = [totalGroups](long long count) {
+                return 100.0 * static_cast<double>(count) /
+                static_cast<double>(totalGroups);
+            };
+
+            std::cout << std::fixed << std::setprecision(2)
+                      << "\nInterval outcomes | Window: "
+                      << window << '\n'
+                      << "Baseline below / inside / above: "
+                      << percent(baselineBelow) << "% / "
+                      << percent(baselineInside) << "% / "
+                      << percent(baselineAbove) << "% / "
+                      << "Rolling below / inside / above: "
+                      << percent(rollingBelow) << "% / "
+                      << percent(rollingInside) << "% / "
+                      << percent(rollingAbove) << "%\n";
 
             double baselinePlayerMae =
                 baselinePlayerMaeTotal / playerCount;
