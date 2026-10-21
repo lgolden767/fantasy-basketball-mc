@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PlayerGameStats.h"
+#include <cstddef>
 #include <string>
 #include <vector>
 #include <optional>
@@ -26,4 +27,10 @@ PlayerSummary calculatePlayerAverages(
 void printPlayerHistory(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId
+);
+
+std::vector<PlayerGameStats> getRecentPlayerGames(
+    const std::vector<PlayerGameStats>& records,
+    const std::string& playerId,
+    std::size_t limit = 60
 );
