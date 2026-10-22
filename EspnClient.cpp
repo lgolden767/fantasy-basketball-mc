@@ -122,13 +122,16 @@ std::vector<Game> EspnClient::getGames(const std::string& date)
                                        .at("displayName")
                                        .get<std::string>();
 
-            if (side == "home")
-            {
+            std::string teamId = competitor.at("team")
+                                           .at("id")
+                                           .get<std::string>();
+
+            if (side == "home") {
                 game.homeTeam = teamName;
-            }
-            else if (side == "away")
-            {
+                game.homeTeamId = teamId;
+            } else if (side == "away") {
                 game.awayTeam = teamName;
+                game.awayTeamId = teamId;
             }
         }
 
