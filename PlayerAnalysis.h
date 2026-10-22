@@ -32,5 +32,6 @@ void printPlayerHistory(
 std::vector<PlayerGameStats> getRecentPlayerGames(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId,
+    const std::string& beforeDate,
     std::size_t limit = 60
 );

@@ -113,8 +113,76 @@ int main() {
                 startDate
             );
 
-            std::cout << "\nRegular season games returned: "
-                      << schedule.size() << '\n';
+            std::string playerId;
+
+            std::cout << "Enter player ID: ";
+
+            if (!(std::cin >> playerId)) {
+                throw std::invalid_argument("Invalid player ID: ");
+            }
+
+            auto gameLog = espn.getPlayerGameLog(playerId, 2026);
+
+            std::cout << "\nEligible games listed: "
+                      << gameLog.size() << '\n';
+
+            const std::size_t displayCount =
+                gameLog.size() < 5 ? gameLog.size() : 5;
+
+            for (std::size_t i = 0; i < displayCount; ++i) {
+                std::cout << gameLog[i].gameDate
+                          << " | Game ID: "
+                          << gameLog[i].gameId
+                          << '\n';
+            }
+
+            auto history = getRecentPlayerGames(
+                allPlayers,
+                playerId,
+                startDate,
+                60
+            );
+
+            if (schedule.empty()) {
+                std::cout << "No scheduled games. No prediction needed.\n";
+            } else {
+                double threshold = 0.0;
+
+                std::cout << "Fantasy points threshold: ";
+
+                if (!(std::cin >> threshold) || !std::isfinite(threshold)) {
+                    throw std::invalid_argument("Invalid threshold.");
+                }
+
+                const int games = static_cast<int>(schedule.size());
+
+                ScoringRules rules;
+
+                auto prediction = simulateWeeklyFantasyPoints(
+                    history,
+                    playerId,
+                    games,
+                    threshold,
+                    10000,
+                    rules,
+                    42
+                );
+
+                std::cout << std::fixed << std::setprecision(2)
+                        << "\nScheduled games: " << games
+                        << "\nMean fantasy points: " << prediction.meanPoints
+                        << "\nMedian: " << prediction.median
+                        << "\nRaw 80% range: "
+                        << prediction.p10 << " to " << prediction.p90
+                        << "\nProbability of " << threshold << "+ points: "
+                        << prediction.probability * 100.0 << "%\n";
+
+                if (games == 3 && history.size() == 60) {
+                    std::cout << "Provisionally calibrated range: "
+                              << prediction.p10 - 3.0 << " to "
+                              << prediction.p90 + 3.0 << '\n';
+                }
+            }
 
             for (const auto& game : schedule) {
                 std::cout << game.gameDate << " | "

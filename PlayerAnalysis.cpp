@@ -133,6 +133,7 @@ void printPlayerHistory(
 std::vector<PlayerGameStats> getRecentPlayerGames(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId,
+    const std::string& beforeDate,
     std::size_t limit
 ) {
     if (limit < 2) {
@@ -143,10 +144,35 @@ std::vector<PlayerGameStats> getRecentPlayerGames(
 
     std::vector<PlayerGameStats> history;
 
+    if (beforeDate.size() != 8 ||
+        beforeDate.find_first_not_of("0123456789") !=
+            std::string::npos) {
+        throw std::invalid_argument(
+            "Use YYYYMMDD for the cutoff date."
+        );
+    }
+
+    const std::string cutoff =
+        beforeDate.substr(0, 4) + "-" +
+        beforeDate.substr(4, 2) + "-" +
+        beforeDate.substr(6, 2);
+
     for (const auto& record : records) {
         if (record.playerId != playerId ||
             record.didNotPlay           ||
             record.seasonType != 2) {
+            continue;
+        }
+
+        if (record.gameDate.size() < 10) {
+            throw std::runtime_error(
+                "Missing or invalid date for game " + record.gameId
+            );
+        }
+
+        const std::string gameDay = record.gameDate.substr(0, 10);
+
+        if (gameDay >= cutoff) {
             continue;
         }
 
