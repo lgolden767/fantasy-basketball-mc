@@ -7,6 +7,7 @@
 #include "FantasyScoring.h"
 #include "HistoricalImport.h"
 #include "Backtest.h"
+#include "schedule.h"
 
 #include <curl/curl.h>
 #include <iostream>
@@ -17,6 +18,8 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <chrono>
+#include <cmath>
 
 int main() {
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
@@ -75,7 +78,7 @@ int main() {
 
         int mode = 0;
 
-        std::cout << "\n1. Predict player fantasy points\n"
+        std::cout << "\n1. List team schedule\n"
                   << "2. Run backtests\n"
                   << "0. Exit\n"
                   << "Input: ";
@@ -85,75 +88,44 @@ int main() {
         }
 
         if (mode == 1) {
-            std::string playerId;
-            int games = 0;
-            double threshold = 0.0;
+            std::string teamId;
+            std::string startDate;
 
-            std::cout << "Enter player ID: ";
+            std::cout << "Enter team ID: ";
 
-            if (!(std::cin >> playerId)) {
-                throw std::invalid_argument("Invalid player ID.");
+            if (!(std::cin >> teamId)) {
+                throw std::invalid_argument("Invalid team ID.");
             }
 
-            std::cout << "Games to simluate: ";
+            std::cout << "Week starts (YYYYMMDD): ";
 
-            if (!(std::cin >> games) || games <= 0) {
+            if (!(std::cin >> startDate)) {
                 throw std::invalid_argument(
-                    "Enter a positive number of games."
+                    "Invalid start date."
                 );
             }
 
-            std::cout << "Fantasy points threshold: ";
+            EspnClient espn;
 
-            if (!(std::cin >> threshold) || !std::isfinite(threshold)) {
-                throw std::invalid_argument("Invalid threshld.");
-            }
-
-            auto history = getRecentPlayerGames(
-                allPlayers,
-                playerId,
-                60
+            auto schedule = getTeamWeek(
+                espn,
+                teamId,
+                startDate
             );
 
-            ScoringRules rules;
+            std::cout << "\nRegular season games returned: "
+                      << schedule.size() << '\n';
 
-            auto prediction = simulateWeeklyFantasyPoints(
-                history,
-                playerId,
-                games,
-                threshold,
-                10000,
-                rules,
-                42
-            );
-
-            std::cout << std::fixed << std::setprecision(2)
-                      << "\nPlayer: " << history.back().playerName
-                      << "\nHistorical games: " << history.size()
-                      << "\nHistory stats: " << history.front().gameDate
-                      << "\nHistory ends: " << history.back().gameDate
-                      << "\nGames simulated per trial: "  << games
-                      << "\nMean fantasy points: " << prediction.meanPoints
-                      << "\nMedian: " << prediction.median
-                      << "\nRaw 80% range: "
-                      << prediction.p10 << " to " << prediction.p90
-                      << "\nRaw simulation probability of "
-                      << threshold << "+ points: "
-                      << prediction.probability * 100.0 << "%\n";
-            
-            if (games == 3 && history.size() == 60) {
-                constexpr double adjustment = 3.0;
-
-                std::cout << "Calibrated 80% range: "
-                          << prediction.p10 - adjustment
-                          << " to "
-                          << prediction.p90 + adjustment
-                          << '\n';
-
+            for (const auto& game : schedule) {
+                std::cout << game.gameDate << " | "
+                          << game.awayTeam << " at "
+                          << game.homeTeam << " | "
+                          << game.status << '\n';
             }
 
-            std::cout << "Assumes participation in every simulated game.\n"
-                      << "Uses the latest games stored locally.\n";
+            if (schedule.empty()) {
+                std::cout << "No matching games returned for this week.\n";
+            }
         } else if (mode == 2) {
             std::vector<PlayerGameStats> filteredPlayers;
 

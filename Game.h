@@ -5,6 +5,8 @@ struct Game {
     std::string id;
     std::string homeTeam;
     std::string awayTeam;
+    std::string homeTeamId;
+    std::string awayTeamId;
     std::string status;
     bool completed = false;
 
