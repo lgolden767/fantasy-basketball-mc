@@ -2,6 +2,7 @@
 #include "EspnClient.h"
 #include "Game.h"
 #include "PlayerGameStats.h"
+#include "PlayerGameRef.h"
 
 #include <nlohmann/json.hpp>
 #include <string>
@@ -9,6 +10,7 @@
 #include <stdexcept>
 #include <utility>
 #include <iostream>
+#include <unordered_set>
 
 namespace {
     int readNonnegativeInt (const std::string& text) {
@@ -247,4 +249,107 @@ std::vector<PlayerGameStats> EspnClient::getPlayerStats(const std::string &gameI
     }
 
     return results;
+}
+
+std::vector<PlayerGameRef> EspnClient::getPlayerGameLog(
+    const std::string& playerId,
+    int season
+) {
+    if (playerId.empty() ||
+        playerId.find_first_not_of("0123456789") != std::string::npos) {
+        throw std::invalid_argument("Invalid player ID: ");
+    }
+
+    const std::string url = 
+        "https://site.web.api.espn.com/apis/common/v3/"
+        "sports/basketball/nba/athletes/" +
+        playerId +
+        "/gamelog?season=" +
+        std::to_string(season);
+    
+    HttpClient http;
+
+    const std::string response = http.get(url);
+    const auto data = nlohmann::json::parse(response);
+
+    std::vector<PlayerGameRef> games;
+    std::unordered_set<std::string> countedGames;
+
+    const auto& eventDetails = data.at("events");
+
+    for (const auto& seasonType : data.at("seasonTypes")) {
+        const std::string name =
+            seasonType.at("displayName").get<std::string>();
+
+        if (name.find("Regular Season") == std::string::npos) {
+            continue;
+        }
+
+        for (const auto& category : seasonType.at("categories")) {
+            if (category.value("type", std::string{}) != "event") {
+                continue;
+            }
+
+            for (const auto& entry : category.at("events")) {
+                const std::string gameId =
+                    entry.at("eventId").get<std::string>();
+
+                const auto& details = eventDetails.at(gameId);
+
+                const auto team = details.value(
+                    "team",
+                    nlohmann::json::object()
+                );
+
+                const auto opponent = details.value(
+                    "opponent",
+                    nlohmann::json::object()
+                );
+
+                const std::string note = details.value(
+                    "eventNote",
+                    std::string{}
+                );
+
+                if (team.value("isAllStar", false) ||
+                    opponent.value("isAllStar", false) ||
+                    note.find("All-Star") != std::string::npos) {
+                    continue;
+                }
+                
+                if (gameId == "401838140" ||
+                    gameId == "401838141" ||
+                    gameId == "401838142" ||
+                    gameId == "401838143") {
+                    continue;
+                }
+
+                if (!countedGames.insert(gameId).second) {
+                    continue;
+                }
+
+                PlayerGameRef game;
+                game.gameId = gameId;
+                game.gameDate =
+                    details.at("gameDate").get<std::string>();
+                game.seasonYear = season;
+
+                games.push_back(game);
+            }
+        }
+    }
+
+    std::sort(
+        games.begin(),
+        games.end(),
+        [](const PlayerGameRef& a, const PlayerGameRef& b) {
+            if (a.gameDate == b.gameDate) {
+                return a.gameId > b.gameId;
+            }
+
+            return a.gameDate > b.gameDate;
+        }
+    );
+
+    return games;
 }
