@@ -192,18 +192,25 @@ std::vector<PlayerGameStats> EspnClient::getPlayerStats(const std::string &gameI
             const auto threePointersIndex   = findIndex("3PT");
             const auto freeThrowsIndex      = findIndex("FT");
 
-            for (const auto &entry : group.at("athletes"))
+            for (const auto& entry : group.at("athletes"))
             {
+                const auto& athlete = entry.at("athlete");
+                const bool didNotPlay = entry.value("didNotPlay", false);
+
+                if (!athlete.contains("id") || athlete.at("id").is_null()) {
+                    if (didNotPlay) { continue; };
+
+                    throw std::runtime_error(
+                        "Player athlete missing ID in game " + gameId
+                    );
+                }
+
                 PlayerGameStats player;
 
                 player.gameId = gameId;
-                player.playerId = entry.at("athlete")
-                                      .at("id")
-                                      .get<std::string>();
-                player.playerName = entry.at("athlete")
-                                        .at("displayName")
-                                        .get<std::string>();
-                player.didNotPlay = entry.value("didNotPlay", false);
+                player.playerId = athlete.at("id").get<std::string>();
+                player.playerName = athlete.at("displayName").get<std::string>();
+                player.didNotPlay = didNotPlay;
 
                 if (!player.didNotPlay)
                 {
