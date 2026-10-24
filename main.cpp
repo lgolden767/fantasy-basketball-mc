@@ -32,26 +32,6 @@ int main() {
 
     try {
 
-        char loadNewData;
-
-        std::cout << "Load new data? (y/n): ";
-        std::cin >> loadNewData;
-
-        if (loadNewData == 'y' || loadNewData == 'Y') {
-            EspnClient espn;
-
-            std::string startDate;
-            std::string endDate;
-
-            std::cout << "Start date (YYYYMMDD): ";
-            std::cin >> startDate;
-
-            std::cout << "End date (YYYYMMDD): ";
-            std::cin >> endDate;
-
-            importDateRange(espn, startDate, endDate);
-        }
-
         std::vector<PlayerGameStats> allPlayers;
         int filesLoaded = 0;
 
