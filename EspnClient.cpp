@@ -198,10 +198,28 @@ std::vector<PlayerGameStats> EspnClient::getPlayerStats(const std::string &gameI
                 const bool didNotPlay = entry.value("didNotPlay", false);
 
                 if (!athlete.contains("id") || athlete.at("id").is_null()) {
-                    if (didNotPlay) { continue; };
+                    const auto stats = entry.value(
+                        "stats",
+                        nlohmann::json::array()
+                    );
+
+                    const bool noMinutes =
+                        stats.is_array() &&
+                        stats.size() > minutesIndex &&
+                        stats.at(minutesIndex) == "--";
+
+                    const bool coachDecision =
+                        entry.value("reason", std::string{}) ==
+                        "COACH'S DECISION";
+
+                    if (didNotPlay || (coachDecision && noMinutes)) {
+                        std::cerr << "Skipping unidentified nonparticipant in game "
+                                  << gameId << '\n';
+                        continue;
+                    }
 
                     throw std::runtime_error(
-                        "Player athlete missing ID in game " + gameId
+                        "Played athlete missing ID in game " + gameId
                     );
                 }
 

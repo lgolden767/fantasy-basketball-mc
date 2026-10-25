@@ -8,6 +8,7 @@
 #include "HistoricalImport.h"
 #include "Backtest.h"
 #include "schedule.h"
+#include "FantasyTeam.h"
 
 #include <curl/curl.h>
 #include <iostream>
@@ -61,8 +62,8 @@ int main() {
 
         int mode = 0;
 
-        std::cout << "\n1. List team schedule\n"
-                  << "2. Run backtests\n"
+        std::cout << "\n1. Prediction Mode\n"
+                  << "2. Backtest Mode\n"
                   << "0. Exit\n"
                   << "Input: ";
 
@@ -71,65 +72,69 @@ int main() {
         }
 
         if (mode == 1) {
-            std::string teamId;
+            FantasyTeam fantasyTeam{
+                "My fantasy team",
+                {
+                    {"3135046", "7"},       // PG: Tyus Jones
+                    {"3078576", "2"},       // SG: Derrick White
+                    {"3147657", "18"},      // SF: Mikal Bridges
+                    {"3064290", "7"},       // PF: Aaron Gordon
+                    {"4066261", "14"}       // C:  Bam Adebayo
+                }
+            };
+
             std::string startDate;
-
-            std::cout << "Enter team ID: ";
-
-            if (!(std::cin >> teamId)) {
-                throw std::invalid_argument("Invalid team ID.");
-            }
 
             std::cout << "Week starts (YYYYMMDD): ";
 
             if (!(std::cin >> startDate)) {
-                throw std::invalid_argument(
-                    "Invalid start date."
-                );
+                throw std::invalid_argument("Invalid start date: ");
+            }
+
+            double threshold = 0.0;
+
+            std::cout << "Fantasy points threshold for each player: ";
+
+            if (!(std::cin >> threshold) || !std::isfinite(threshold)) {
+                throw std::invalid_argument("Invalid threshold");
             }
 
             EspnClient espn;
+            ScoringRules rules;
 
-            auto schedule = getTeamWeek(
-                espn,
-                teamId,
-                startDate
-            );
+            for (const auto& player : fantasyTeam.players) {
+                std::cout << "\nPlayer ID: " << player.playerId << '\n';
 
-            std::string playerId;
+                auto schedule = getTeamWeek(
+                    espn,
+                    player.nbaTeamId,
+                    startDate
+                );
 
-            std::cout << "Enter player ID: ";
-
-            if (!(std::cin >> playerId)) {
-                throw std::invalid_argument("Invalid player ID: ");
-            };
-
-            auto history = ensurePlayerHistory(
-                espn,
-                allPlayers,
-                playerId,
-                startDate,
-                60
-            );
-
-            if (schedule.empty()) {
-                std::cout << "No scheduled games. No prediction needed.\n";
-            } else {
-                double threshold = 0.0;
-
-                std::cout << "Fantasy points threshold: ";
-
-                if (!(std::cin >> threshold) || !std::isfinite(threshold)) {
-                    throw std::invalid_argument("Invalid threshold.");
+                for (const auto& game : schedule) {
+                    std::cout << game.gameDate << " | "
+                              << game.awayTeam << " at "
+                              << game.homeTeam << '\n';
                 }
+
+                if (schedule.empty()) {
+                    std::cout << "No scheduled games; projected total: 0\n";
+                    continue;
+                }
+
+                auto history = ensurePlayerHistory(
+                    espn,
+                    allPlayers,
+                    player.playerId,
+                    startDate,
+                    60
+                );
 
                 const int games = static_cast<int>(schedule.size());
 
-                ScoringRules rules;
-
                 auto prediction = simulateWeeklyFantasyPoints(
                     history,
-                    playerId,
+                    player.playerId,
                     games,
                     threshold,
                     10000,
@@ -138,13 +143,15 @@ int main() {
                 );
 
                 std::cout << std::fixed << std::setprecision(2)
-                        << "\nScheduled games: " << games
-                        << "\nMean fantasy points: " << prediction.meanPoints
-                        << "\nMedian: " << prediction.median
-                        << "\nRaw 80% range: "
-                        << prediction.p10 << " to " << prediction.p90
-                        << "\nProbability of " << threshold << "+ points: "
-                        << prediction.probability * 100.0 << "%\n";
+                          << "\bPlayer: " << history.back().playerName
+                          << "\nHistorical games: " << history.size()
+                          << "\nScheduled games: " << games
+                          << "\nMean fantasy points: " << prediction.meanPoints
+                          << "\nMedian: " << prediction.median
+                          << "\nRaw 80% range: "
+                          << prediction.p10 << " to " << prediction.p90
+                          << "\nProbability of " << threshold << "+ points: "
+                          << prediction.probability * 100.0 << "%\n";
 
                 if (games == 3 && history.size() == 60) {
                     std::cout << "Provisionally calibrated range: "
@@ -153,16 +160,9 @@ int main() {
                 }
             }
 
-            for (const auto& game : schedule) {
-                std::cout << game.gameDate << " | "
-                          << game.awayTeam << " at "
-                          << game.homeTeam << " | "
-                          << game.status << '\n';
-            }
+            std::cout << "\nAssumes every roster member participates in "
+                      << "every game on their assigned NBA team's schedule.\n";
 
-            if (schedule.empty()) {
-                std::cout << "No matching games returned for this week.\n";
-            }
         } else if (mode == 2) {
             std::vector<PlayerGameStats> filteredPlayers;
 
