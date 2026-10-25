@@ -264,6 +264,8 @@ WeeklyFantasyResult simulateWeeklyFantasyPoints(
 
     result.meanPoints = sumOfTotals / simulations;
 
+    result.trialTotals = weeklyTotals;
+
     std::sort(weeklyTotals.begin(), weeklyTotals.end());
 
     auto percentile = [&](double fraction) {

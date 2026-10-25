@@ -36,6 +36,8 @@ struct WeeklyFantasyResult {
     double p10 = 0.0;
     double median = 0.0;
     double p90 = 0.0;
+
+    std::vector<double> trialTotals;
 };
 
 SimulationResult simulatePoints(

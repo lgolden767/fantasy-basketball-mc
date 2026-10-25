@@ -22,6 +22,8 @@
 #include <chrono>
 #include <cmath>
 #include <algorithm>
+#include <random>
+#include <numeric>
 
 int main() {
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
@@ -102,7 +104,9 @@ int main() {
             EspnClient espn;
             ScoringRules rules;
 
-            double teamExpectedPoints = 0.0;
+            constexpr int simulations = 10000;
+            std::vector<double> teamTotals(simulations, 0.0);
+            std::mt19937 seedGenerator(42);
 
             for (const auto& player : fantasyTeam.players) {
                 std::cout << "\nPlayer ID: " << player.playerId << '\n';
@@ -139,12 +143,14 @@ int main() {
                     player.playerId,
                     games,
                     threshold,
-                    10000,
+                    simulations,
                     rules,
-                    42
+                    static_cast<unsigned int>(seedGenerator())
                 );
 
-                teamExpectedPoints += prediction.meanPoints;
+                for (std::size_t trial = 0; trial < teamTotals.size(); ++trial) {
+                    teamTotals[trial] += prediction.trialTotals.at(trial);
+                }
 
                 std::cout << std::fixed << std::setprecision(2)
                           << "\nPlayer: " << history.back().playerName
@@ -164,10 +170,55 @@ int main() {
                 }
             }
 
+            double teamThreshold = 0.0;
+
+            std::cout << "\nFantasy-team points threshold: ";
+
+            if (!(std::cin >> teamThreshold) ||
+                !std::isfinite(teamThreshold) ||
+                teamThreshold < 0.0) {
+                throw std::invalid_argument(
+                    "Enter a finite, nonnegative threshold."
+                );
+            }
+
+            const auto successes = std::count_if(
+                teamTotals.begin(),
+                teamTotals.end(),
+                [teamThreshold](double total) {
+                    return total >= teamThreshold;
+                }
+            );
+
+            const double teamProbability =
+                static_cast<double>(successes) /
+                static_cast<double>(teamTotals.size());
+
+            const double teamMean =
+                std::accumulate(teamTotals.begin(), teamTotals.end(), 0.0) /
+                static_cast<double>(teamTotals.size());
+
+            std::sort(teamTotals.begin(), teamTotals.end());
+
+            auto teamPercentile = [&](double fraction) {
+                const std::size_t rank = static_cast<std::size_t>(
+                    std::ceil(fraction * teamTotals.size())
+                );
+
+                return teamTotals.at(rank - 1);
+            };
+
             std::cout << std::fixed << std::setprecision(2)
                       << "\nFantasy team: " << fantasyTeam.name
-                      << "\nExpected weekly total: "
-                      << teamExpectedPoints << " points\n";
+                      << "\nExpected weekly total: " << teamMean
+                      << "\nMedian: " << teamPercentile(0.50)
+                      << "\nRaw team 80% range: "
+                      << teamPercentile(0.10) << " to "
+                      << teamPercentile(0.90)
+                      << "\nProbability of " << teamThreshold << "+ points: "
+                      << teamProbability * 100.0 << "%\n"
+                      << "Assumes independent performances, participation "
+                      << "in every scheduled game, and all roster points count.\n";
 
         } else if (mode == 2) {
             std::vector<PlayerGameStats> filteredPlayers;
