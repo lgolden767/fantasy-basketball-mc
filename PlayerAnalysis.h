@@ -1,6 +1,8 @@
 #pragma once
 
 #include "PlayerGameStats.h"
+#include "EspnClient.h"
+
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -33,5 +35,13 @@ std::vector<PlayerGameStats> getRecentPlayerGames(
     const std::vector<PlayerGameStats>& records,
     const std::string& playerId,
     const std::string& beforeDate,
+    std::size_t limit = 60
+);
+
+std::vector<PlayerGameStats> ensurePlayerHistory(
+    EspnClient& espn,
+    std::vector<PlayerGameStats>& allPlayers,
+    const std::string& playerId,
+    const std::string& startDate,
     std::size_t limit = 60
 );

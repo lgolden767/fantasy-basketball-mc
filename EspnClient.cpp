@@ -360,3 +360,43 @@ std::vector<PlayerGameRef> EspnClient::getPlayerGameLog(
 
     return games;
 }
+
+std::vector<int> EspnClient::getPlayerSeasons(
+    const std::string& playerId
+) {
+    if (playerId.empty() ||
+        playerId.find_first_not_of("0123456789") != std::string::npos) {
+            throw std::invalid_argument("Invalid player ID.");
+    }
+
+    const std::string url =
+        "https://site.web.api.espn.com/apis/common/v3/"
+        "sports/basketball/nba/athletes/" +
+        playerId +
+        "/gamelog";
+
+    const std::string response = http.get(url);
+    const auto data = nlohmann::json::parse(response);
+
+    std::vector<int> seasons;
+
+    for (const auto& filter : data.at("filters")) {
+        if (filter.value("name", std::string{}) != "season") { continue; }
+
+        for (const auto& option : filter.at("options")) {
+            const std::string year = option.at("value").get<std::string>();
+
+            seasons.push_back(std::stoi(year));
+        }
+    }
+
+    std::sort(seasons.rbegin(), seasons.rend());
+
+    seasons.erase(std::unique(seasons.begin(), seasons.end()), seasons.end());
+
+    if (seasons.empty()) {
+        throw std::runtime_error("No NBA seasons lists for player " + playerId);
+    }
+
+    return seasons;
+}

@@ -1,4 +1,6 @@
 #include "PlayerAnalysis.h"
+#include "EspnClient.h"
+#include "StatsCsv.h"
 
 #include <unordered_set>
 #include <stdexcept>
@@ -7,6 +9,8 @@
 #include <map>
 #include <utility>
 #include <algorithm>
+#include <iostream>
+#include <stdexcept>
 
 PlayerSummary calculatePlayerAverages(
     const std::vector<PlayerGameStats>& records,
@@ -60,7 +64,7 @@ PlayerSummary calculatePlayerAverages(
 
         for (double points : pointsHistory) {
             double difference = points - summary.avgPoints;
-            squaredDifferences = difference * difference;
+            squaredDifferences += difference * difference;
         }
 
         double variance = 
@@ -232,4 +236,117 @@ std::vector<PlayerGameStats> getRecentPlayerGames(
     }
 
     return uniqueHistory;
+}
+
+std::vector<PlayerGameStats> ensurePlayerHistory(
+    EspnClient& espn,
+    std::vector<PlayerGameStats>& allPlayers,
+    const std::string& playerId,
+    const std::string& startDate,
+    std::size_t limit
+) {
+    if (limit < 2) {
+        throw std::invalid_argument(
+            "History limit must be at least two."
+        );
+    }
+
+    if (startDate.size() != 8 ||
+        startDate.find_first_not_of("0123456789") != std::string::npos) {
+            throw std::invalid_argument(
+                "Use YYYYMMDD for the start date."
+            );
+    }
+
+    const std::string cutoff =
+        startDate.substr(0, 4) + "-" +
+        startDate.substr(4, 2) + "-" +
+        startDate.substr(6, 2);
+
+    std::size_t gamesChecked = 0;
+    std::size_t gamesDownloaded = 0;
+
+    const auto seasons = espn.getPlayerSeasons(playerId);
+    const int cutoffYear = std::stoi(startDate.substr(0, 4));
+
+    for (int season : seasons) {
+        if (season > cutoffYear + 1) { continue; }
+
+        std::cout << "\nChecking season " << season << "...\n";
+
+        auto gameLog = espn.getPlayerGameLog(playerId, season);
+
+        for (const auto& game : gameLog) {
+            if (game.gameDate.substr(0, 10) >= cutoff) {
+                continue;
+            }
+
+            auto existing = std::find_if(
+                allPlayers.begin(),
+                allPlayers.end(),
+                [&](const PlayerGameStats& record) {
+                    return record.playerId == playerId &&
+                        record.gameId == game.gameId &&
+                        !record.didNotPlay;
+                }
+            );
+
+            if (existing == allPlayers.end()) {
+                std::cout << "Downloading game "
+                        << game.gameId << "...\n";
+
+                auto players = espn.getPlayerStats(game.gameId);
+
+                auto player = std::find_if(
+                    players.begin(),
+                    players.end(),
+                    [&](const PlayerGameStats& record) {
+                        return record.playerId == playerId;
+                    }
+                );
+
+                if (player == players.end()) {
+                    throw std::runtime_error(
+                        "Player missing from box score " + game.gameId
+                    );
+                }
+
+                if (player->didNotPlay) { continue; }
+                PlayerGameStats record = *player;
+
+                record.gameId = game.gameId;
+                record.gameDate = game.gameDate;
+                record.seasonYear = game.seasonYear;
+                record.seasonType = 2;
+
+                const std::string filename =
+                    "metadata/autopull_" +
+                    record.playerId + "_" +
+                    record.gameId + ".csv";
+
+                savePlayerStats({record}, filename);
+
+                allPlayers.push_back(record);
+                ++gamesDownloaded;
+            }
+
+            ++gamesChecked;
+
+            if (gamesChecked == limit) { break; };
+        }
+
+        if (gamesChecked == limit) { break; }
+    }
+
+    std::cout << "\nEligible played games checked: "
+                << gamesChecked
+                << "\nMissing games downloaded: "
+                << gamesDownloaded << '\n';
+
+    return getRecentPlayerGames(
+        allPlayers,
+        playerId,
+        startDate,
+        limit
+    );
 }

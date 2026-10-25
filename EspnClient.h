@@ -20,4 +20,5 @@ class EspnClient{
             const std::string& playerId,
             int season
         );
+        std::vector<int> getPlayerSeasons(const std::string& playerId);
 };

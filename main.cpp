@@ -30,6 +30,8 @@ int main() {
 
     int exitCode = 0;
 
+    std::filesystem::create_directories("Data/metadata");
+
     try {
 
         std::vector<PlayerGameStats> allPlayers;
@@ -100,89 +102,10 @@ int main() {
 
             if (!(std::cin >> playerId)) {
                 throw std::invalid_argument("Invalid player ID: ");
-            }
+            };
 
-            auto gameLog = espn.getPlayerGameLog(playerId, 2026);
-
-            std::cout << "\nEligible games listed: "
-                      << gameLog.size() << '\n';
-
-            const std::size_t displayCount =
-                gameLog.size() < 5 ? gameLog.size() : 5;
-
-            for (std::size_t i = 0; i < displayCount; ++i) {
-                std::cout << gameLog[i].gameDate
-                          << " | Game ID: "
-                          << gameLog[i].gameId
-                          << '\n';
-            }
-
-            const std::string cutoff =
-                startDate.substr(0, 4) + "-" +
-                startDate.substr(4, 2) + "-" +
-                startDate.substr(6, 2);
-
-            std::size_t gamesChecked = 0;
-            std::size_t gamesDownloaded = 0;
-
-            for (const auto& game : gameLog) {
-                if (game.gameDate.substr(0, 10) >= cutoff) {
-                    continue;
-                }
-
-                auto existing = std::find_if(
-                    allPlayers.begin(),
-                    allPlayers.end(),
-                    [&](const PlayerGameStats& record) {
-                        return record.playerId == playerId &&
-                               record.gameId == game.gameId &&
-                               !record.didNotPlay;
-                    }
-                );
-
-                if (existing == allPlayers.end()) {
-                    std::cout << "Downloading game "
-                              << game.gameId << "...\n";
-
-                    auto players = espn.getPlayerStats(game.gameId);
-
-                    auto player = std::find_if(
-                        players.begin(),
-                        players.end(),
-                        [&](const PlayerGameStats& record) {
-                            return record.playerId == playerId;
-                        }
-                    );
-
-                    if (player == players.end()) {
-                        throw std::runtime_error(
-                            "Player missing from box score " + game.gameId
-                        );
-                    }
-
-                    if (player->didNotPlay) { continue; }
-                    PlayerGameStats record = *player;
-
-                    record.gameId = game.gameId;
-                    record.gameDate = game.gameDate;
-                    record.seasonYear = game.seasonYear;
-                    record.seasonType = 2;
-
-                    allPlayers.push_back(record);
-                    ++gamesDownloaded;
-                }
-
-                ++gamesChecked;
-
-                if (gamesChecked == 60) { break; };
-            }
-
-            std::cout << "\nEligible played games checked: "
-                      << gamesChecked
-                      << "\nMissing games downloaded: "
-                      << gamesDownloaded << '\n';
-
-            auto history = getRecentPlayerGames(
+            auto history = ensurePlayerHistory(
+                espn,
                 allPlayers,
                 playerId,
                 startDate,
