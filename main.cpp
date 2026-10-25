@@ -102,6 +102,8 @@ int main() {
             EspnClient espn;
             ScoringRules rules;
 
+            double teamExpectedPoints = 0.0;
+
             for (const auto& player : fantasyTeam.players) {
                 std::cout << "\nPlayer ID: " << player.playerId << '\n';
 
@@ -142,8 +144,10 @@ int main() {
                     42
                 );
 
+                teamExpectedPoints += prediction.meanPoints;
+
                 std::cout << std::fixed << std::setprecision(2)
-                          << "\bPlayer: " << history.back().playerName
+                          << "\nPlayer: " << history.back().playerName
                           << "\nHistorical games: " << history.size()
                           << "\nScheduled games: " << games
                           << "\nMean fantasy points: " << prediction.meanPoints
@@ -160,8 +164,10 @@ int main() {
                 }
             }
 
-            std::cout << "\nAssumes every roster member participates in "
-                      << "every game on their assigned NBA team's schedule.\n";
+            std::cout << std::fixed << std::setprecision(2)
+                      << "\nFantasy team: " << fantasyTeam.name
+                      << "\nExpected weekly total: "
+                      << teamExpectedPoints << " points\n";
 
         } else if (mode == 2) {
             std::vector<PlayerGameStats> filteredPlayers;
